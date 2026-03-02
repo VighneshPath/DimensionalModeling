@@ -6,6 +6,7 @@ No silver tier — single clean source maps directly to dimensions + fact.
 Requires: pip install clickhouse-connect
 """
 
+import hashlib
 import clickhouse_connect
 from datetime import date
 from decimal import Decimal
@@ -31,6 +32,10 @@ FX_TO_USD = {
 
 def to_usd(amount: Decimal, currency: str) -> Decimal:
     return round(amount * FX_TO_USD.get(currency, Decimal('1.0')), 4)
+
+def make_surrogate_key(natural_key: str) -> int:
+    """SHA256 of natural key truncated to 64 bits → stable UInt64 surrogate key."""
+    return int(hashlib.sha256(natural_key.encode()).hexdigest()[:16], 16)
 
 def make_date_key(d: date) -> int:
     """YYYYMMDD integer — compact, sortable, human-readable."""
@@ -61,7 +66,7 @@ client.command('CREATE DATABASE IF NOT EXISTS gold')
 
 client.command('''
     CREATE OR REPLACE TABLE gold.dim_member (
-        member_key  UInt32,
+        member_key  UInt64,
         member_name String,
         email       String,
         phone       String
@@ -70,7 +75,7 @@ client.command('''
 
 client.command('''
     CREATE OR REPLACE TABLE gold.dim_branch (
-        branch_key     UInt32,
+        branch_key     UInt64,
         branch_name    String,
         city           String,
         state_province String,
@@ -81,7 +86,7 @@ client.command('''
 
 client.command('''
     CREATE OR REPLACE TABLE gold.dim_product (
-        product_key  UInt32,
+        product_key  UInt64,
         barcode      String,
         title        String,
         product_line String
@@ -103,10 +108,10 @@ client.command('''
 
 client.command('''
     CREATE OR REPLACE TABLE gold.fact_borrow_return (
-        key               UInt32,
-        member_key        UInt32,
-        branch_key        UInt32,
-        product_key       UInt32,
+        key               UInt64,
+        member_key        UInt64,
+        branch_key        UInt64,
+        product_key       UInt64,
         borrow_date_key   UInt32,
         due_date_key      UInt32,
         return_date_key   Nullable(UInt32),
@@ -131,7 +136,7 @@ member_rows = []
 for row in bronze_rows:
     email = row['email']
     if email not in member_map:
-        key = len(member_map) + 1
+        key = make_surrogate_key(email)
         member_map[email] = key
         member_rows.append((key, row['member_name'], email, row['phone']))
 
@@ -150,7 +155,7 @@ branch_rows = []
 for row in bronze_rows:
     branch = row['branch']
     if branch not in branch_map:
-        key = len(branch_map) + 1
+        key = make_surrogate_key(branch)
         branch_map[branch] = key
         branch_rows.append((key, branch, row['city'], row['state'], row['country'], row['currency']))
 
@@ -169,7 +174,7 @@ product_rows = []
 for row in bronze_rows:
     barcode = row['barcode']
     if barcode not in product_map:
-        key = len(product_map) + 1
+        key = make_surrogate_key(barcode)
         product_map[barcode] = key
         product_rows.append((key, barcode, row['title'], row['product_line']))
 
@@ -202,7 +207,7 @@ print(f'dim_date:           {len(date_rows)} rows')
 
 fact_rows = []
 
-for i, row in enumerate(bronze_rows, start=1):
+for row in bronze_rows:
     currency    = row['currency']
     fee_local   = row['rental_fee_local']
     fine_local  = row['fine_local']
@@ -219,7 +224,7 @@ for i, row in enumerate(bronze_rows, start=1):
         return_count     = None
 
     fact_rows.append((
-        i,
+        make_surrogate_key(f"{row['borrow_id']}|{row['barcode']}"),
         member_map[row['email']],
         branch_map[row['branch']],
         product_map[row['barcode']],
