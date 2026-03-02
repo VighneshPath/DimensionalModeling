@@ -1,0 +1,22 @@
+services:
+  clickhouse:
+    image: clickhouse/clickhouse-server:latest
+    container_name: library_clickhouse
+    environment:
+      CLICKHOUSE_USER: library
+      CLICKHOUSE_PASSWORD: library123
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+    ports:
+      - "8123:8123"   # HTTP interface
+      - "9000:9000"   # Native TCP interface
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+      - ./clickhouse/init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "clickhouse-client --user library --password library123 --query 'SELECT 1'"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  clickhouse_data:
