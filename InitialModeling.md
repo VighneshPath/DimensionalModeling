@@ -18,7 +18,7 @@
 		2. Item Return -> Late or lost
 2. Declare Grain
 	1. Borrowing Book
-		1. One row per borrowed physical copy per borrow transaction
+		1. One row per borrowed/returned physical copy per borrow/return transaction
 		2. If borrow bill has 3 books -> 3 rows
 		3. Has member, branch
 	2. Item Return
@@ -53,6 +53,17 @@
 		2. Overall inventory count
 
 
+---
+>Although the grain ultimately is equivalent to the primary key, it’s a mistake to list
+a set of dimensions and then assume this list is the grain declaration
+
+
+>Dimensions fall out of the question, “How do business people describe the data
+resulting from the business process measurement events?”
+
+>Represents the "who, what, when, where, when and how of the data"
+
+>Facts are determined by answering the question, “What is the process measuring?”
 
 ----
 
@@ -93,3 +104,20 @@ Date -> Weekend, Public Holiday,
 	7. Common Grains
 		1. Borrow Item (book, member, amount (USD), borrow date, return date, fine amount (USD))
 		2. Inventory Item (copy, book, inventory in date, inventory out date)
+
+
+----
+Dim Date -> Should this be just on event or every event? Master list of all dates.
+
+Factless fact tables.
+
+Which are the books that are not borrowed at all -> Factless fact (It's not a fact but can be derived.)
+
+What should qualify as a separate dimension vs an attribute of a dimension
+
+for a dashboard we generally use a fixed forex rate (is this true?) then we can have a constant col and a date exchange col
+
+currency conversion fact table -> Is this a fact?
+
+
+----
