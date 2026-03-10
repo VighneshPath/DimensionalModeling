@@ -1,0 +1,81 @@
+// ============================================================
+// Dimensional Model - Global Library Platform
+// Based on InitialModeling.md
+// ============================================================
+
+// ---- DIMENSIONS ----
+
+Table dim_member {
+  member_key   int     [pk]
+  member_name  varchar
+  email        varchar
+  phone        varchar
+  address      varchar
+}
+
+Table dim_branch {
+  branch_key      int     [pk]
+  owner           varchar
+  staff           list
+  local_currency  varchar
+  branch_name     varchar
+}
+
+Table dim_location {
+
+  location_key     int [pk]
+  geoname_id       int  
+  latitude         double
+  longitude        double
+  timezone         varchar
+  postcode        varchar
+  city            varchar
+  state_province_code  varchar
+  state_province_name  varchar
+  country         varchar
+}
+
+Table dim_product {
+  product_key   int     [pk]
+  barcode       varchar
+  title         varchar
+  product_line  varchar  // Book / Magazine / Journal
+}
+
+// Role-playing dimension — used as BorrowDate and ReturnDate
+Table dim_date {
+  date_key          int     [pk]
+  full_date         date
+  day_of_week       varchar
+  is_weekend        boolean
+  is_public_holiday boolean
+  month             int
+  quarter           int
+  year              int
+}
+
+// ---- FACTS ----
+
+// Grain: One row per borrowed/returned physical copy per borrow/return transaction
+// (e.g. a bill with 3 books = 3 rows)
+Table fact_borrow_return {
+  key               int  [pk]
+  member_key               int  [ref: > dim_member.member_key]
+  branch_key               int  [ref: > dim_branch.branch_key]
+  product_key              int  [ref: > dim_product.product_key]
+  location_key             int [ref: > dim_location.location_key]
+  borrow_date_key          int  [ref: > dim_date.date_key]
+  due_date_key             int  [ref: > dim_date.date_key]
+  return_date_key          int  [ref: > dim_date.date_key] 
+
+  // Measures
+  fee_local  decimal
+  fee_usd    decimal
+  fine_amount_local  decimal
+  fine_amount_usd    decimal
+  borrow_count      int    // always 1
+  days_late          int
+  is_lost            boolean
+  return_count       int    // always 1 or null
+}
+
